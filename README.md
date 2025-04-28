@@ -14,8 +14,11 @@ With a simple and user-friendly interface, Database Backup CLI ensures your data
 
 - ✅ Test connection to a MySQL database via CLI prompts
 - ✅ Prompt for Host, Port, Username, Password, Database name
-- ✅ Password input hidden for security
-- 🚧 Backup, Restore, and other DBMS support (Coming soon)
+- ✅ Secure password entry (hidden input for security)
+- ✅ Perform a **full database backup** for MySQL
+- 🚧 Restore functionality (Coming soon)
+- 🚧 Compression of backup files (Coming soon)
+- 🚧 Support for PostgreSQL, MongoDB, SQLite (Coming soon)
 
 ---
 
@@ -27,3 +30,11 @@ With a simple and user-friendly interface, Database Backup CLI ensures your data
 git clone https://github.com/your-username/db-backup-cli.git
 cd db-backup-cli
 pip install -r requirements.txt
+
+## Usage
+
+Test MySQL database connection:
+
+```bash
+python3 cli.py test-mysql-connection
+
