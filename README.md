@@ -31,6 +31,8 @@ git clone https://github.com/your-username/db-backup-cli.git
 cd db-backup-cli
 pip install -r requirements.txt
 
+```
+
 ## Usage
 
 Test MySQL database connection:
