@@ -2,6 +2,10 @@ import pymysql
 import subprocess
 import os
 import zipfile
+from google.cloud import storage
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def connect_mysql(host, port, user, password, database):
     try:
@@ -18,8 +22,23 @@ def connect_mysql(host, port, user, password, database):
         print(f"MySQL connection Failed: {e}")
         return None
     
+def upload_to_gcs(bucket_name, source_file, destination_blob_name):
+    """Upload a file to Google Cloud Storage"""
+    try:
+        client = storage.Client()
+        bucket = client.get_bucket(bucket_name)
+        
+        blob = bucket.blob(destination_blob_name)
+        blob.upload_from_filename(source_file)
+        
+        print(f"Backup uploaded to Google Cloud Storage as {destination_blob_name}")
+        return True
     
-def backup_mysql(host, port, user, password, database, output_file, backup_dir='backups'):
+    except Exception as e:
+        print(f"Google Cloud Storage upload failed: {e}")
+        return False
+    
+def backup_mysql(host, port, user, password, database, output_file, backup_dir='backups', upload_to_cloud=False, bucket_name=None, keep_local=True):
     """Backup MysQL database and save to a .sql file."""
     
     if not os.path.exists(backup_dir):
@@ -47,6 +66,13 @@ def backup_mysql(host, port, user, password, database, output_file, backup_dir='
         os.remove(output_sql_path)
         
         print(f"Backup successful! saved to {output_sql_path}")
+        
+        if upload_to_cloud and bucket_name:
+            success = upload_to_gcs(bucket_name, compressed_backup_path, f"backups/{output_file}.zip" )
+            
+            if not keep_local:
+                os.remove(compressed_backup_path)
+                
         return True
     
     except subprocess.CalledProcessError as e:

@@ -1,5 +1,14 @@
 import click
 from db_connector import connect_mysql, backup_mysql
+from dotenv import load_dotenv
+import os
+from InquirerPy import inquirer, get_style
+from termcolor import colored
+
+
+load_dotenv()
+
+GOOGLE_CLOUD_BUCKET = os.getenv('GOOGLE_CLOUD_BUCKET')
 
 @click.group()
 def cli():
@@ -33,11 +42,47 @@ def backup_mysql_command(host, port, user, password, database, output_file):
     connection = connect_mysql(host, port, user, password, database)
 
     if connection:
-        success = backup_mysql(host, port, user, password, database, output_file)
-        if success:
-            click.echo(f"Backup saved successfully as {output_file}.sql")
-        else:
-            click.echo(f"Backup failed")
+        
+        storage_options = [
+            'Local Storage',
+            'Google Cloud',
+            'Both Local and Google Cloud'
+        ]
+        
+        custom_style = get_style({
+            
+            "pointer": "#00ff00 bold",  
+            "questionmark": "#00ff00 bold",  
+            "selected": "#00ff00 bold",  
+        })
+        
+        selected_option = inquirer.select(
+            message="Where do yo want to store the backup",
+            choices=storage_options,
+            pointer="➤",
+            style=custom_style
+        ).execute()
+        
+        if selected_option == 'Local Storage':
+            success = backup_mysql(host, port, user, password, database, output_file)
+            if success:
+                click.echo(f"Backup saved successfully locally as {output_file}.zip")
+        
+        elif selected_option == 'Google Cloud':
+            success = backup_mysql(host, port, user, password, database, output_file, upload_to_cloud=True, bucket_name=GOOGLE_CLOUD_BUCKET, keep_local=False)
+            if success:
+                click.echo(f"Backup uploaded successfully to Google Cloud Storage as {output_file}.zip")
+                
+        elif selected_option == 'Both Local and Google Cloud':
+            success_local = backup_mysql(host, port, user, password, database, output_file)
+            if success_local:
+                click.echo(f"Backup saved successfully locally as {output_file}.zip")
+                
+            success_cloud = backup_mysql(host, port, user, password, database, output_file, upload_to_cloud=True, bucket_name=GOOGLE_CLOUD_BUCKET)
+            if success_cloud:
+                click.echo(f"Backup uploaded successfully to Google Cloud Storage as {output_file}.zip")
+                
+        
     else:
         click.echo("Could not connect to the database. Backup not performed")
         
