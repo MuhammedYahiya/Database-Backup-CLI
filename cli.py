@@ -44,13 +44,14 @@ def backup_mysql_command(host, port, user, password, database, output_file):
 
     if connection:
         
-        storage_options = [
-            'Local Storage',
-            'Google Cloud',
-            'AWS S3',
-            'Both Local and Google Cloud',
-            'Both Local and AWS S3',
-        ]
+        storage_options = {
+            'Local Storage': lambda: backup_mysql(host, port, user, password, database, output_file),
+            'Google Cloud': lambda: backup_mysql(host, port, user, password, database, output_file, upload_to_cloud=True, bucket_name=GOOGLE_CLOUD_BUCKET, keep_local=False),
+            'AWS S3:': lambda: backup_mysql(host, port, user, password, database, output_file, upload_to_s3_enabled=True, bucket_name=AWS_S3_BUCKET, keep_local=False),
+            'Both Local and Google Cloud': lambda: backup_mysql(host, port, user, password, database, output_file, upload_to_cloud=True, bucket_name=GOOGLE_CLOUD_BUCKET),
+            'Both Local and AWS S3': lambda: backup_mysql(host, port, user, password, database, output_file, upload_to_s3_enabled=True, bucket_name=AWS_S3_BUCKET),
+        }
+
         
         custom_style = get_style({
             
@@ -66,43 +67,15 @@ def backup_mysql_command(host, port, user, password, database, output_file):
             style=custom_style
         ).execute()
         
-        if selected_option == 'Local Storage':
-            success = backup_mysql(host, port, user, password, database, output_file)
-            if success:
-                click.echo(f"Backup saved successfully locally as {output_file}.zip")
-        
-        elif selected_option == 'Google Cloud':
-            success = backup_mysql(host, port, user, password, database, output_file, upload_to_cloud=True, bucket_name=GOOGLE_CLOUD_BUCKET, keep_local=False)
-            if success:
-                click.echo(f"Backup uploaded successfully to Google Cloud Storage as {output_file}.zip")
-                
-        elif selected_option == "AWS S3":
-            success = backup_mysql(host, port, user, password, database, output_file, upload_to_s3_enabled=True, bucket_name=AWS_S3_BUCKET, keep_local=False)
-            if success:
-                click.echo(f"Backup uploaded successfully to AWS S3 as {output_file}.zip")
-                
-        elif selected_option == 'Both Local and Google Cloud':
-            success_local = backup_mysql(host, port, user, password, database, output_file)
-            if success_local:
-                click.echo(f"Backup saved successfully locally as {output_file}.zip")
-                
-            success_cloud = backup_mysql(host, port, user, password, database, output_file, upload_to_cloud=True, bucket_name=GOOGLE_CLOUD_BUCKET)
-            if success_cloud:
-                click.echo(f"Backup uploaded successfully to Google Cloud Storage as {output_file}.zip")
-                
-        elif selected_option == 'Both Local and AWS S3':
-            success_local = backup_mysql(host, port, user, password, database, output_file)
-            if success_local:
-                click.echo(f"Backup saved successfully locally as {output_file}.zip")
-                
-            success = backup_mysql(host, port, user, password, database, output_file, upload_to_s3_enabled=True, bucket_name=AWS_S3_BUCKET)
-            if success:
-                click.echo(f"Backup uploaded successfully to AWS S3 as {output_file}.zip")
-            
-        
+        success = storage_options[selected_option]()
+        if success:
+            click.echo(f"Backup process completed successfully for {selected_option}")
+        else:
+            click.echo(f"Backup failed for {selected_option}")
+    
     else:
-        click.echo("Could not connect to the database. Backup not performed")
-        
+        click.echo("Could not connect to the database. Backup not performed")    
+
 @cli.command()
 def backup():
     """Perform a backup"""
