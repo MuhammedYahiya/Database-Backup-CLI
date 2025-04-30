@@ -9,6 +9,7 @@ from termcolor import colored
 load_dotenv()
 
 GOOGLE_CLOUD_BUCKET = os.getenv('GOOGLE_CLOUD_BUCKET')
+AWS_S3_BUCKET = os.getenv('AWS_S3_BUCKET')
 
 @click.group()
 def cli():
@@ -46,7 +47,9 @@ def backup_mysql_command(host, port, user, password, database, output_file):
         storage_options = [
             'Local Storage',
             'Google Cloud',
-            'Both Local and Google Cloud'
+            'AWS S3',
+            'Both Local and Google Cloud',
+            'Both Local and AWS S3',
         ]
         
         custom_style = get_style({
@@ -73,6 +76,11 @@ def backup_mysql_command(host, port, user, password, database, output_file):
             if success:
                 click.echo(f"Backup uploaded successfully to Google Cloud Storage as {output_file}.zip")
                 
+        elif selected_option == "AWS S3":
+            success = backup_mysql(host, port, user, password, database, output_file, upload_to_s3_enabled=True, bucket_name=AWS_S3_BUCKET, keep_local=False)
+            if success:
+                click.echo(f"Backup uploaded successfully to AWS S3 as {output_file}.zip")
+                
         elif selected_option == 'Both Local and Google Cloud':
             success_local = backup_mysql(host, port, user, password, database, output_file)
             if success_local:
@@ -82,6 +90,15 @@ def backup_mysql_command(host, port, user, password, database, output_file):
             if success_cloud:
                 click.echo(f"Backup uploaded successfully to Google Cloud Storage as {output_file}.zip")
                 
+        elif selected_option == 'Both Local and AWS S3':
+            success_local = backup_mysql(host, port, user, password, database, output_file)
+            if success_local:
+                click.echo(f"Backup saved successfully locally as {output_file}.zip")
+                
+            success = backup_mysql(host, port, user, password, database, output_file, upload_to_s3_enabled=True, bucket_name=AWS_S3_BUCKET)
+            if success:
+                click.echo(f"Backup uploaded successfully to AWS S3 as {output_file}.zip")
+            
         
     else:
         click.echo("Could not connect to the database. Backup not performed")

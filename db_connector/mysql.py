@@ -1,7 +1,7 @@
 import pymysql
 import subprocess
 import os
-from cloud_storage import upload_to_gcs
+from cloud_storage import upload_to_gcs,upload_to_s3
 from utils import compress_file
 
 
@@ -22,7 +22,7 @@ def connect_mysql(host, port, user, password, database):
     
 
     
-def backup_mysql(host, port, user, password, database, output_file, backup_dir='backups', upload_to_cloud=False, bucket_name=None, keep_local=True):
+def backup_mysql(host, port, user, password, database, output_file, backup_dir='backups', upload_to_cloud=False, bucket_name=None, keep_local=True, upload_to_s3_enabled=False):
     """Backup MysQL database and save to a .sql file."""
     
     if not os.path.exists(backup_dir):
@@ -58,6 +58,13 @@ def backup_mysql(host, port, user, password, database, output_file, backup_dir='
             
             if not keep_local:
                 os.remove(compressed_backup_path)
+                
+        if upload_to_s3_enabled and bucket_name:
+            success = upload_to_s3(compressed_backup_path, f"backups/{output_file}.zip", bucket_name)
+            
+            if not keep_local:
+                os.remove(compressed_backup_path)
+            
                 
         return True
     
