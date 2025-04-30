@@ -19,7 +19,8 @@ With a simple and user-friendly interface, Database Backup CLI ensures your data
 - ✅ Store backup to:
   - Local Storage (as a `.zip` file)
   - Google Cloud Storage
-  - Both Local and Google Cloud
+  - AWS S3
+  - Both Local and Cloud (Google or AWS)
 - 🚧 Restore functionality (Coming soon)
 - 🚧 Compression improvements and options (Coming soon)
 - 🚧 Support for PostgreSQL, MongoDB, SQLite (Coming soon)
@@ -68,14 +69,19 @@ python3 cli.py backup-mysql-command
 You will be prompted to enter:
 - Database connection details
 - Backup file name (without extension)
-- Where to store the backup (Local / Google Cloud / Both)
+- Where to store the backup (Local / Cloud (Google or AWS)/ Both)
 
 Backups are saved in the `backups/` directory and uploaded to your configured Google Cloud Storage bucket if selected.
 
 > **Note:** Set your Google Cloud bucket name in the `.env` file:
 
 ```bash
+GOOGLE_APPLICATION_CREDENTIALS=path/to/your/service-account.json
 GOOGLE_CLOUD_BUCKET=your-bucket-name
+AWS_ACCESS_KEY=your-access-key-id
+AWS_SECRET_KEY=your-secret-access-key
+AWS_REGION=us-east-1
+AWS_S3_BUCKET=your-s3-bucket-name
 ```
 
 Also, ensure your environment has access to Google Cloud credentials (`GOOGLE_APPLICATION_CREDENTIALS` env variable if required).
