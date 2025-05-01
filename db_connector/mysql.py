@@ -22,7 +22,7 @@ def connect_mysql(host, port, user, password, database):
     
 
     
-def backup_mysql(host, port, user, password, database, output_file, backup_dir='backups', upload_to_cloud=False, bucket_name=None, keep_local=True, upload_to_s3_enabled=False):
+def backup_mysql(host, port, user, password, database, output_file, backup_dir='backups/mysql', upload_to_cloud=False, bucket_name=None, keep_local=True, upload_to_s3_enabled=False):
     """Backup MysQL database and save to a .sql file."""
     
     if not os.path.exists(backup_dir):
@@ -54,13 +54,13 @@ def backup_mysql(host, port, user, password, database, output_file, backup_dir='
         print(f"Backup successful! saved to {output_sql_path}")
         
         if upload_to_cloud and bucket_name:
-            success = upload_to_gcs(bucket_name, compressed_backup_path, f"backups/{output_file}.zip" )
+            success = upload_to_gcs(bucket_name, compressed_backup_path, f"backups/mysql/{output_file}.zip" )
             
             if not keep_local:
                 os.remove(compressed_backup_path)
                 
         if upload_to_s3_enabled and bucket_name:
-            success = upload_to_s3(compressed_backup_path, f"backups/{output_file}.zip", bucket_name)
+            success = upload_to_s3(compressed_backup_path, f"backups/mysql/{output_file}.zip", bucket_name)
             
             if not keep_local:
                 os.remove(compressed_backup_path)
