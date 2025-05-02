@@ -1,1 +1,1 @@
-from .mysql import connect_mysql, backup_mysql
+from .mysql import connect_mysql, backup_mysql, restore_local_mysql

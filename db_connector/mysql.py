@@ -3,7 +3,8 @@ import subprocess
 import os
 from cloud_storage import upload_to_gcs,upload_to_s3
 from utils import compress_file
-
+import zipfile
+from InquirerPy import inquirer
 
 def connect_mysql(host, port, user, password, database):
     try:
@@ -71,3 +72,52 @@ def backup_mysql(host, port, user, password, database, output_file, backup_dir='
     except subprocess.CalledProcessError as e:
         print(f"Backup failed: {e}")
         return False
+
+
+
+def restore_local_mysql(backup_dir='backups/mysql'):
+    zip_files = [f for f in os.listdir(backup_dir) if f.endswith('.zip')]
+
+    if not zip_files:
+        print("No backup files found in local storage.")
+        return False
+
+    selected_file = inquirer.select(
+        message="Select a backup to restore:",
+        choices=zip_files,
+        pointer="➤"
+    ).execute()
+
+    zip_path = os.path.join(backup_dir, selected_file)
+    extract_path = os.path.join(backup_dir, 'temp_restore')
+    os.makedirs(extract_path, exist_ok=True)
+
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(extract_path)
+
+    sql_files = [f for f in os.listdir(extract_path) if f.endswith('.sql')]
+    if not sql_files:
+        print("No .sql file found in the backup archive.")
+        return False
+
+    sql_path = os.path.join(extract_path, sql_files[0])
+
+    # Ask user for DB connection details
+    host = inquirer.text(message="Database Host:").execute()
+    port = int(inquirer.text(message="Port:", default="3306").execute())
+    user = inquirer.text(message="Username:").execute()
+    password = inquirer.secret(message="Password:").execute()
+    database = inquirer.text(message="Database Name:").execute()
+
+    try:
+        command = ['mysql', '-h', host, '-P', str(port), '-u', user, f'-p{password}', database]
+        with open(sql_path, 'r') as sql_file:
+            subprocess.run(command, stdin=sql_file, check=True)
+        print(f"✅ Database restored successfully from {selected_file}")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Restore failed: {e}")
+        return False
+    finally:
+        os.remove(sql_path)
+        os.rmdir(extract_path)

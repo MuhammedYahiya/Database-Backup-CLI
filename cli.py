@@ -2,7 +2,7 @@ import click
 import os
 from dotenv import load_dotenv
 from InquirerPy import inquirer, get_style
-from db_connector import backup_mysql, connect_mysql
+from db_connector import backup_mysql, connect_mysql, restore_local_mysql
 
 load_dotenv()
 
@@ -71,6 +71,19 @@ def backup():
 
     else:
         click.echo(f"{selected_db} support is coming soon!")
+        
+
+
+@cli.command()
+def restore():
+    """Restore from a backup"""
+    success = restore_local_mysql()
+    if success:
+        click.echo("Restore completed.")
+    else:
+        click.echo("Restore failed.")
+
+
 
 if __name__ == "__main__":
     cli()
