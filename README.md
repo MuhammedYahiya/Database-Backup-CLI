@@ -21,7 +21,7 @@ With a simple and user-friendly interface, Database Backup CLI ensures your data
   - Google Cloud Storage
   - AWS S3
   - Both Local and Cloud (Google or AWS)
-- 🚧 Restore functionality (Coming soon)
+- 🚧 Restore functionality - Google/AWS (Coming soon)
 - 🚧 Compression improvements and options (Coming soon)
 - 🚧 Support for PostgreSQL, MongoDB, SQLite (Coming soon)
 - 🚧 Automated scheduling of backups (Coming soon)
@@ -43,27 +43,10 @@ pip install -r requirements.txt
 
 ## Usage
 
-### Test MySQL Database Connection
-
-```bash
-python3 cli.py test-mysql-connection
-```
-
-You will be prompted to enter:
-- Database Host
-- Database Port (default 3306)
-- Username
-- Password (input hidden)
-- Database Name
-
-If the connection is successful, a confirmation message will appear.
-
----
-
 ### Backup MySQL Database
 
 ```bash
-python3 cli.py backup-mysql-command
+python3 cli.py backup
 ```
 
 You will be prompted to enter:
@@ -71,7 +54,7 @@ You will be prompted to enter:
 - Backup file name (without extension)
 - Where to store the backup (Local / Cloud (Google or AWS)/ Both)
 
-Backups are saved in the `backups/` directory and uploaded to your configured Google Cloud Storage bucket if selected.
+Backups are saved in the `backups/mysql` directory and uploaded to your configured Google Cloud Storage bucket if selected.
 
 > **Note:** Set your Google Cloud bucket name in the `.env` file:
 
@@ -88,9 +71,16 @@ Also, ensure your environment has access to Google Cloud credentials (`GOOGLE_AP
 
 ---
 
+###Restore MySQL Backup
+
+```bash
+python3 cli.py restore
+```
+---
+
 ## Upcoming Features
 
-- Restore from backup files
+- Restore from backup files(Googel Cloud / AWS S3)
 - Incremental and differential backup support
 - PostgreSQL, MongoDB, and SQLite support
 - AWS S3 and Azure Storage integration
