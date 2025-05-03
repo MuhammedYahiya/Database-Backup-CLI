@@ -1,10 +1,11 @@
 import pymysql
 import subprocess
 import os
-from cloud_storage import upload_to_gcs,upload_to_s3
+from cloud_storage import upload_to_gcs,upload_to_s3, download_from_s3,download_from_gcs
 from utils import compress_file
 import zipfile
 from InquirerPy import inquirer
+import tempfile
 
 def connect_mysql(host, port, user, password, database):
     try:
@@ -75,21 +76,36 @@ def backup_mysql(host, port, user, password, database, output_file, backup_dir='
 
 
 
-def restore_local_mysql(backup_dir='backups/mysql'):
-    zip_files = [f for f in os.listdir(backup_dir) if f.endswith('.zip')]
+def restore_mysql(source, bucket_name=None, backup_dir='backups/mysql'):
+    if source == 'local':
+        zip_files = [f for f in os.listdir(backup_dir) if f.endswith('.zip')]
+        if not zip_files:
+            print("No local backup files found.")
+            return False
+        selected_file = inquirer.select(message="Choose a local backup:", choices=zip_files).execute()
+        zip_path = os.path.join(backup_dir, selected_file)
 
-    if not zip_files:
-        print("No backup files found in local storage.")
+    elif source == 'gcs':
+        zip_name = inquirer.text(message="Enter the GCS backup file name (e.g. backup.zip):").execute()
+        zip_path = os.path.join(tempfile.gettempdir(), zip_name)
+        success = download_from_gcs(bucket_name, f"backups/mysql/{zip_name}", zip_path)
+        if not success:
+            print("Failed to download backup from GCS.")
+            return False
+
+    elif source == 's3':
+        zip_name = inquirer.text(message="Enter the S3 backup file name (e.g. backup.zip):").execute()
+        zip_path = os.path.join(tempfile.gettempdir(), zip_name)
+        success = download_from_s3(f"backups/mysql/{zip_name}", zip_path, bucket_name)
+        if not success:
+            print("Failed to download backup from S3.")
+            return False
+
+    else:
+        print("Unsupported restore source.")
         return False
 
-    selected_file = inquirer.select(
-        message="Select a backup to restore:",
-        choices=zip_files,
-        pointer="➤"
-    ).execute()
-
-    zip_path = os.path.join(backup_dir, selected_file)
-    extract_path = os.path.join(backup_dir, 'temp_restore')
+    extract_path = os.path.join(tempfile.gettempdir(), 'restore_temp')
     os.makedirs(extract_path, exist_ok=True)
 
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
@@ -97,12 +113,11 @@ def restore_local_mysql(backup_dir='backups/mysql'):
 
     sql_files = [f for f in os.listdir(extract_path) if f.endswith('.sql')]
     if not sql_files:
-        print("No .sql file found in the backup archive.")
+        print("No SQL file found in archive.")
         return False
 
     sql_path = os.path.join(extract_path, sql_files[0])
 
-    # Ask user for DB connection details
     host = inquirer.text(message="Database Host:").execute()
     port = int(inquirer.text(message="Port:", default="3306").execute())
     user = inquirer.text(message="Username:").execute()
@@ -113,11 +128,15 @@ def restore_local_mysql(backup_dir='backups/mysql'):
         command = ['mysql', '-h', host, '-P', str(port), '-u', user, f'-p{password}', database]
         with open(sql_path, 'r') as sql_file:
             subprocess.run(command, stdin=sql_file, check=True)
-        print(f"✅ Database restored successfully from {selected_file}")
+        print(f"✅ Database restored successfully from {source.upper()} backup")
         return True
     except subprocess.CalledProcessError as e:
         print(f"❌ Restore failed: {e}")
         return False
     finally:
-        os.remove(sql_path)
-        os.rmdir(extract_path)
+        if os.path.exists(sql_path):
+            os.remove(sql_path)
+        if os.path.exists(zip_path):
+            os.remove(zip_path)
+        if os.path.exists(extract_path):
+            os.rmdir(extract_path)
