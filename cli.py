@@ -2,7 +2,7 @@ import click
 import os
 from dotenv import load_dotenv
 from InquirerPy import inquirer, get_style
-from db_connector import backup_mysql, connect_mysql, restore_local_mysql
+from db_connector import backup_mysql, connect_mysql, restore_mysql
 
 load_dotenv()
 
@@ -76,12 +76,39 @@ def backup():
 
 @cli.command()
 def restore():
-    """Restore from a backup"""
-    success = restore_local_mysql()
-    if success:
-        click.echo("Restore completed.")
+    db_choices = {
+        'MySQL' : 'mysql',
+        'PostgreSQL': 'postgresql',  
+        'MongoDB': 'mongodb',         
+        'SQLite': 'sqlite', 
+    }
+    
+    select_db = inquirer.select(
+        message="Select the database to restore:",
+        choices=list(db_choices.keys()),
+        style=custom_style    
+    ).execute()
+    
+    if db_choices[select_db] == 'mysql':
+        storage_source = {
+            'Local Storage':lambda: restore_mysql('local'), 
+            'Google Cloud Storage':lambda: restore_mysql('gcs', bucket_name=GOOGLE_CLOUD_BUCKET), 
+            'AWS S3':lambda: restore_mysql('s3', bucket_name=AWS_S3_BUCKET)
+        }
+        source = inquirer.select(
+            message="Select the storage source",
+            choices=list(storage_source.keys()),
+            style=custom_style
+        ).execute()
+        
+        success = storage_source[source]()
+        if success:
+            click.echo(f'Restore completely successfully from {source}')
+        else:
+            click.echo(f'Restore failed for {source}')
+    
     else:
-        click.echo("Restore failed.")
+        click.echo(f"{select_db} support is coming soon")
 
 
 
