@@ -2,7 +2,7 @@ import click
 import os
 from dotenv import load_dotenv
 from InquirerPy import inquirer, get_style
-from db_connector import backup_mysql, connect_mysql, restore_mysql
+from db_connector import backup_mysql, restore_mysql
 
 load_dotenv()
 
@@ -37,24 +37,37 @@ def backup():
     ).execute()
 
     if db_choices[selected_db] == 'mysql':
-        host = click.prompt('Database Host')
-        port = click.prompt('Database Port', default=3306)
-        user = click.prompt('Username')
-        password = click.prompt('Password', hide_input=True)
-        database = click.prompt('Database Name')
-        output_file = click.prompt('Backup File Name (without extension)')
-
-        connection = connect_mysql(host, port, user, password, database)
-        if not connection:
-            click.echo("Could not connect to the database.")
-            return
+        host = inquirer.text(message="Database Host:").execute()
+        port = int(inquirer.text(message="Port:", default="3306").execute())
+        user = inquirer.text(message="Username:").execute()
+        password = inquirer.secret(message="Password:").execute()
+        database = inquirer.text(message="Database Name:").execute()
+        output_file = inquirer.text(message='Backup File Name (without extension)').execute()
 
         storage_options = {
             'Local Storage': lambda: backup_mysql(host, port, user, password, database, output_file),
-            'Google Cloud': lambda: backup_mysql(host, port, user, password, database, output_file, upload_to_cloud=True, bucket_name=GOOGLE_CLOUD_BUCKET, keep_local=False),
-            'AWS S3': lambda: backup_mysql(host, port, user, password, database, output_file, upload_to_s3_enabled=True, bucket_name=AWS_S3_BUCKET, keep_local=False),
-            'Both Local and Google Cloud': lambda: backup_mysql(host, port, user, password, database, output_file, upload_to_cloud=True, bucket_name=GOOGLE_CLOUD_BUCKET),
-            'Both Local and AWS S3': lambda: backup_mysql(host, port, user, password, database, output_file, upload_to_s3_enabled=True, bucket_name=AWS_S3_BUCKET),
+            'Google Cloud Storage': lambda: backup_mysql(
+                host, port, user, password, database, output_file,
+                upload_to_cloud=True,
+                bucket_name=GOOGLE_CLOUD_BUCKET,
+                keep_local=False
+            ),
+            'AWS S3': lambda: backup_mysql(
+                host, port, user, password, database, output_file,
+                upload_to_s3_enabled=True,
+                bucket_name=AWS_S3_BUCKET,
+                keep_local=False
+            ),
+            'Both Local + GCS': lambda: backup_mysql(
+                host, port, user, password, database, output_file,
+                upload_to_cloud=True,
+                bucket_name=GOOGLE_CLOUD_BUCKET
+            ),
+            'Both Local + AWS S3': lambda: backup_mysql(
+                host, port, user, password, database, output_file,
+                upload_to_s3_enabled=True,
+                bucket_name=AWS_S3_BUCKET
+            ),
         }
 
         selected_storage = inquirer.select(
@@ -71,45 +84,40 @@ def backup():
 
     else:
         click.echo(f"{selected_db} support is coming soon!")
-        
 
 
 @cli.command()
 def restore():
     db_choices = {
-        'MySQL' : 'mysql',
-        'PostgreSQL': 'postgresql',  
-        'MongoDB': 'mongodb',         
-        'SQLite': 'sqlite', 
+        'MySQL': 'mysql',
     }
-    
-    select_db = inquirer.select(
+
+    selected_db = inquirer.select(
         message="Select the database to restore:",
         choices=list(db_choices.keys()),
-        style=custom_style    
+        style=custom_style
     ).execute()
-    
-    if db_choices[select_db] == 'mysql':
+
+    if db_choices[selected_db] == 'mysql':
         storage_source = {
-            'Local Storage':lambda: restore_mysql('local'), 
-            'Google Cloud Storage':lambda: restore_mysql('gcs', bucket_name=GOOGLE_CLOUD_BUCKET), 
-            'AWS S3':lambda: restore_mysql('s3', bucket_name=AWS_S3_BUCKET)
+            'Local Storage': lambda: restore_mysql('local'),
+            'Google Cloud Storage': lambda: restore_mysql('gcs', bucket_name=GOOGLE_CLOUD_BUCKET),
+            'AWS S3': lambda: restore_mysql('s3', bucket_name=AWS_S3_BUCKET)
         }
+
         source = inquirer.select(
             message="Select the storage source",
             choices=list(storage_source.keys()),
             style=custom_style
         ).execute()
-        
+
         success = storage_source[source]()
         if success:
-            click.echo(f'Restore completely successfully from {source}')
+            click.echo(f'✅ Restore completed successfully from {source}')
         else:
-            click.echo(f'Restore failed for {source}')
-    
+            click.echo(f'❌ Restore failed from {source}')
     else:
-        click.echo(f"{select_db} support is coming soon")
-
+        click.echo(f"{selected_db} support is coming soon!")
 
 
 if __name__ == "__main__":
